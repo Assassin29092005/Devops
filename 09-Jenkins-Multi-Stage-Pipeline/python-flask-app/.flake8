@@ -1,0 +1,3 @@
+[flake8]
+# python-app-deploy/ is the pipeline's deploy output (a copy of app.py from the previous build), not source code
+extend-exclude = python-app-deploy
