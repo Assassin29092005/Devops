@@ -16,9 +16,9 @@ Understand what Continuous Integration is, why teams use it and which tools prov
 | File | Purpose |
 |---|---|
 | `README.md` | This lab report. |
-| `setup_wizard.py` | Playwright script that clicked through the Jenkins setup wizard in Edge and took screenshots 05-13. It reads the initial admin password from the container at runtime and never prints it. |
-| `login.py` | Playwright script that signed in as `admin` from a fresh browser session and took screenshot 14 (step 12). It also reads the password at runtime and never prints or stores it. |
-| `screenshot/` | PNG evidence, numbered in execution order (16 and 17 were added later, see step 13). |
+| `setup_wizard.py` | Playwright script that clicked through the Jenkins setup wizard in Edge and took the wizard and dashboard screenshots (05, 06, 10 and 11). It reads the initial admin password from the container at runtime and never prints it. |
+| `login.py` | Playwright script that signed in as `admin` from a fresh browser session and took screenshot 14 (step 8). It also reads the password at runtime and never prints or stores it. |
+| `screenshot/` | PNG evidence, numbered in execution order (16 was added later, see step 5). Gaps in the numbering are screenshots that were removed because other screenshots already show the same result. |
 
 Both scripts import `launch` and `urlbar` from the lab's screenshot helper `shot.py`, which lives in the session scratch folder and is **not included** in this folder, so they will not run elsewhere without it. The terminal screenshots were also rendered by that helper from the real command output.
 
@@ -84,18 +84,7 @@ Jenkins is a free, open-source automation server written in Java. It automates b
 
 All terminal commands were run in Windows PowerShell from `D:\Devops\07-Jenkins-CI-Setup`.
 
-### 1. Pre-check: no Jenkins container, volume or port conflict
-```powershell
-docker version --format "Client {{.Client.Version}} / Server {{.Server.Version}} ({{.Server.Os}}/{{.Server.Arch}})"
-docker ps -a --filter name=jenkins
-docker volume ls --filter name=jenkins_home
-"Host listeners on port 8080 or 50000: " + @(Get-NetTCPConnection -LocalPort 8080,50000 -State Listen -ErrorAction SilentlyContinue).Count
-```
-* **Status:** Docker Engine 29.8.0 is running, there is no `jenkins` container or `jenkins_home` volume yet, and ports 8080 and 50000 are free.
-
-![Pre-check: Docker running, no Jenkins container/volume, ports 8080 and 50000 free](./screenshot/01-precheck-no-jenkins.png)
-
-### 2. Install and start Jenkins with Docker
+### 1. Install and start Jenkins with Docker
 The exercise command is `docker run -d --name jenkins -p 8080:8080 -p 50000:50000 jenkins/jenkins:lts`. It was run with two extra volume flags (explained under Issues & Fixes):
 ```powershell
 docker run -d --name jenkins -p 8080:8080 -p 50000:50000 -v jenkins_home:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins/jenkins:lts
@@ -108,7 +97,7 @@ docker run -d --name jenkins -p 8080:8080 -p 50000:50000 -v jenkins_home:/var/je
 
 ![docker run pulls jenkins/jenkins:lts and starts the container](./screenshot/02-docker-run-jenkins.png)
 
-### 3. Verify the container, volume and start-up log
+### 2. Verify the container, volume and start-up log
 ```powershell
 docker ps --filter name=jenkins --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"
 docker volume ls --filter name=jenkins_home
@@ -119,7 +108,7 @@ docker logs jenkins 2>&1 | Select-String "Starting version|fully up and running"
 
 ![Jenkins container running, volume and socket mounted, Jenkins 2.580.1 fully up](./screenshot/03-jenkins-container-running.png)
 
-### 4. Get the Jenkins initial admin password
+### 3. Get the Jenkins initial admin password
 The exercise opens an interactive shell (`docker exec -it <id> bash`) and runs `cat` inside it. The same file was read non-interactively:
 ```powershell
 docker exec jenkins bash -c "id; ls -l /var/jenkins_home/secrets/initialAdminPassword"
@@ -129,22 +118,20 @@ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 
 ![Initial admin password read from the container (masked)](./screenshot/04-initial-admin-password.png)
 
-### 5. Access Jenkins on port 8080: "Unlock Jenkins"
+### 4. Access Jenkins on port 8080: "Unlock Jenkins"
 ```powershell
-python setup_wizard.py    # opens http://localhost:8080 in headless Edge and drives steps 5-11
+python setup_wizard.py    # opens http://localhost:8080 in headless Edge and drives steps 4-7
 ```
-Opening `http://localhost:8080/` redirects to the **Unlock Jenkins** page, which asks for the administrator password from step 4. The script pasted the password (read from the container at runtime) and clicked **Continue**.
+Opening `http://localhost:8080/` redirects to the **Unlock Jenkins** page, which asks for the administrator password from step 3. The script pasted the password (read from the container at runtime) and clicked **Continue**.
 * **Status:** Unlock page shown with the empty "Administrator password" field.
 
 ![Unlock Jenkins page at localhost:8080](./screenshot/05-unlock-jenkins.png)
 
-### 6. Customize Jenkins: install suggested plugins
+### 5. Customize Jenkins: install suggested plugins
 On the **Customize Jenkins** screen, **Install suggested plugins** was chosen.
-* **Status:** Jenkins started downloading the community-recommended plugin set (Folders, Pipeline, Git, GitHub Branch Source, Credentials Binding, Timestamper, ...). Screenshot 07 was taken early in the installation, when only Folders and OWASP Markup Formatter were done. The wizard screen was not captured again when the installation finished; the completion is shown by the container log instead (screenshot 16 below).
+* **Status:** Jenkins downloaded and installed the community-recommended plugin set. The wizard's progress screen was not captured when the installation finished; the completion is shown by the container log instead (screenshot 16 below), and step 9 lists the main plugins that ended up installed.
 
 ![Customize Jenkins: Install suggested plugins / Select plugins to install](./screenshot/06-customize-jenkins.png)
-
-![Getting Started: suggested plugins being installed](./screenshot/07-installing-suggested-plugins.png)
 
 The Jenkins log line that marks the end of the installation was printed later with a read-only command (on 9 October 2026; the container had only been restarted since, not re-created, so its log still contains the first-run messages):
 ```powershell
@@ -154,37 +141,18 @@ docker logs jenkins 2>&1 | Select-String 'Completed installation' | ForEach-Obje
 
 ![Jenkins log: Completed installation of 92 plugins in 4 min 28 sec](./screenshot/16-plugin-install-completed-log.png)
 
-### 7. Create First Admin User: skipped
-The **Create First Admin User** form appeared after the plugins were installed. **Skip and continue as admin** was clicked, so no new account was created; the built-in `admin` account keeps the initial admin password.
-* **Status:** Form shown, step skipped.
-
-![Create First Admin User form, with "Skip and continue as admin"](./screenshot/08-create-first-admin-user.png)
-
-### 8. Instance Configuration
-The proposed Jenkins URL `http://localhost:8080/` was kept and **Save and Finish** was clicked.
-* **Status:** Jenkins URL saved as `http://localhost:8080/`.
-
-![Instance Configuration with Jenkins URL http://localhost:8080/](./screenshot/09-instance-configuration.png)
-
-### 9. Jenkins is ready!
-* **Status:** "Jenkins is ready! Your Jenkins setup is complete." The page also reminds that, because the admin-user step was skipped, the login is user `admin` with the setup-wizard password. **Start using Jenkins** was clicked.
+### 6. Finish the wizard: skip the admin user, keep the instance URL
+After the plugins were installed, the **Create First Admin User** form appeared. **Skip and continue as admin** was clicked, so no new account was created; the built-in `admin` account keeps the initial admin password. On the next screen, **Instance Configuration**, the proposed Jenkins URL `http://localhost:8080/` was kept and **Save and Finish** was clicked.
+* **Status:** "Jenkins is ready! Your Jenkins setup is complete." The page confirms that the admin-user setup was skipped and that the login is user `admin` with the setup-wizard password. **Start using Jenkins** was clicked.
 
 ![Jenkins is ready!](./screenshot/10-jenkins-is-ready.png)
 
-### 10. Jenkins landing page (dashboard)
+### 7. Jenkins landing page (dashboard)
 * **Status:** The dashboard shows "Welcome to Jenkins!", an empty build queue, the built-in node with 2 idle executors (0/2) and the version `Jenkins 2.580.1` in the footer.
 
 ![Jenkins dashboard: Welcome to Jenkins!](./screenshot/11-jenkins-dashboard.png)
 
-### 11. Confirm the version and the installed plugins
-`Manage Jenkins -> About Jenkins` (`/manage/about/`) and `Manage Jenkins -> Plugins -> Installed plugins` (`/manage/pluginManager/installed`).
-* **Status:** About page shows **Version 2.580.1**; the plugin manager lists the installed plugins with versions, health scores and enable switches.
-
-![About Jenkins: Version 2.580.1](./screenshot/12-about-jenkins-version.png)
-
-![Manage Jenkins -> Plugins -> Installed plugins](./screenshot/13-installed-plugins.png)
-
-### 12. Log in again from a fresh browser session
+### 8. Log in again from a fresh browser session
 ```powershell
 python login.py screenshot\14-login-as-admin-whoami.png
 ```
@@ -193,7 +161,7 @@ python login.py screenshot\14-login-as-admin-whoami.png
 
 ![Who Am I: admin, authenticated](./screenshot/14-login-as-admin-whoami.png)
 
-### 13. Final check: plugins of note and container status
+### 9. Final check: plugins of note and container status
 ```powershell
 $have = docker exec jenkins ls /var/jenkins_home/plugins; "Installed plugin files (.jpi): " + @($have | Where-Object { $_ -like '*.jpi' }).Count
 foreach ($p in 'git','github-branch-source','workflow-aggregator','pipeline-graph-view','pipeline-stage-view','credentials-binding','docker-workflow') { '{0,-22} {1}' -f $p, $(if ($have -contains "$p.jpi") { 'installed' } else { 'not installed' }) }
@@ -204,16 +172,6 @@ curl.exe -s -o NUL -w "GET http://localhost:8080/login -> HTTP %{http_code}`n" h
 
 ![Plugins of note, container status and HTTP 200](./screenshot/15-plugins-of-note-and-status.png)
 
-The plugin versions and the security settings were added later (on 9 October 2026, still 92 plugins) with read-only commands: the `Plugin-Version` line of each plugin's manifest, the security section of `config.xml`, and an anonymous request to the JSON API:
-```powershell
-docker exec jenkins grep -H "^Plugin-Version" /var/jenkins_home/plugins/git/META-INF/MANIFEST.MF /var/jenkins_home/plugins/workflow-aggregator/META-INF/MANIFEST.MF /var/jenkins_home/plugins/pipeline-graph-view/META-INF/MANIFEST.MF /var/jenkins_home/plugins/github-branch-source/META-INF/MANIFEST.MF /var/jenkins_home/plugins/credentials-binding/META-INF/MANIFEST.MF
-docker exec jenkins grep -E "securityRealm|disableSignup|authorizationStrategy|denyAnonymousReadAccess" /var/jenkins_home/config.xml
-curl.exe -s -o NUL -w "Anonymous GET http://localhost:8080/api/json -> HTTP %{http_code}`n" http://localhost:8080/api/json
-```
-* **Status:** Git `5.10.1`, Pipeline (`workflow-aggregator`) `608.v67378e9d3db_1`, Pipeline Graph View `1053.v9df19e6ceed2`, GitHub Branch Source `1983.vfa_27ed961853` and Credentials Binding `728.v902a_273b_8947`. Security uses Jenkins' own user database (`HudsonPrivateSecurityRealm`, sign-up disabled) with "Logged-in users can do anything" (`FullControlOnceLoggedInAuthorizationStrategy`) and `denyAnonymousReadAccess` set to `true`, so the anonymous API request is refused with HTTP 403.
-
-![Plugin versions from the manifests, security settings in config.xml, anonymous API request gets HTTP 403](./screenshot/17-plugin-versions-and-security.png)
-
 ---
 
 ## Issues & Fixes
@@ -222,9 +180,9 @@ curl.exe -s -o NUL -w "Anonymous GET http://localhost:8080/api/json -> HTTP %{ht
 |---|---|---|
 | 1 | The exercise's `docker run` has no volume, so all Jenkins data would live in the container's writable layer and be lost if the container is ever re-created. Later exercises (6, 8, 9) reuse this Jenkins. | Added `-v jenkins_home:/var/jenkins_home` (the official image declares this path as its data directory). Restarts and re-creation keep the configuration, plugins and jobs. |
 | 2 | Exercise 6 builds Docker images from Jenkins pipelines, which needs access to a Docker engine. | Added `-v /var/run/docker.sock:/var/run/docker.sock` now, because mounts cannot be added to an existing container later without re-creating it. In PowerShell the single-slash path works; the `//var/run/...` form is only needed in Git Bash to stop MSYS path conversion. Note: the image contains no `docker` CLI and the socket is owned by `root:root` (mode 660), so the `jenkins` user cannot use it yet; installing the CLI and granting access is left to exercise 6, where it is actually needed. |
-| 3 | `docker run` returned exit code 1 in the PowerShell harness although it succeeded. | Windows PowerShell 5.1 turns anything a native program writes to stderr (here the image pull progress) into error records. The printed container ID, `docker ps` (step 3) and the HTTP 200 check confirm the container started correctly. |
+| 3 | `docker run` returned exit code 1 in the PowerShell harness although it succeeded. | Windows PowerShell 5.1 turns anything a native program writes to stderr (here the image pull progress) into error records. The printed container ID, `docker ps` (step 2) and the HTTP 200 check (step 9) confirm the container started correctly. |
 | 4 | The exercise uses an interactive shell (`docker exec -it <id> bash`, then `cat ...`). | Used the equivalent non-interactive `docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword`, which reads the same file and can be scripted and captured. The value is masked in the screenshot. |
-| 5 | The first run of the wizard automation stopped making progress after the plugin installation. The plugins had installed successfully (92 plugins in 4 min 28 s), but the script waited for the text "Create First Admin User", which Jenkins renders inside an `<iframe>` that a top-level text search does not see. | Stopped the script and rewrote `setup_wizard.py` to recognise each wizard screen by its footer button (which is in the main page) and to resume from whatever screen is shown. In the new browser session Jenkins asked to be unlocked again (the wizard is tied to the browser session), and after unlocking it resumed directly at "Create First Admin User" without reinstalling anything. Screenshot 05 is from this second run (it is the same Unlock page); screenshots 06 and 07 are from the first run. |
+| 5 | The first run of the wizard automation stopped making progress after the plugin installation. The plugins had installed successfully (92 plugins in 4 min 28 s), but the script waited for the text "Create First Admin User", which Jenkins renders inside an `<iframe>` that a top-level text search does not see. | Stopped the script and rewrote `setup_wizard.py` to recognise each wizard screen by its footer button (which is in the main page) and to resume from whatever screen is shown. In the new browser session Jenkins asked to be unlocked again (the wizard is tied to the browser session), and after unlocking it resumed directly at "Create First Admin User" without reinstalling anything. Screenshot 05 is from this second run (it is the same Unlock page); screenshot 06 is from the first run. |
 | 6 | The exercise's installation screenshots show an older Jenkins UI. | Current LTS 2.580.1 has a redesigned dashboard and its suggested-plugin set includes "Pipeline Graph View" instead of the older "Pipeline: Stage View". The flow (Unlock -> Customize -> plugins -> admin user -> instance URL -> ready) is otherwise identical. |
 | 7 | `docker ps` truncates the COMMAND column with an ellipsis character that rendered as a replacement glyph in the captured terminal. | Used `docker ps --format "table ..."` with the relevant columns instead (cosmetic only). |
 
@@ -235,12 +193,10 @@ curl.exe -s -o NUL -w "Anonymous GET http://localhost:8080/api/json -> HTTP %{ht
 |---|---|
 | Container | `jenkins` (`jenkins/jenkins:lts`) is `Up`, ports `8080->8080` and `50000->50000` published |
 | Persistence | Named volume `jenkins_home` mounted at `/var/jenkins_home`; Docker socket mounted at `/var/run/docker.sock` |
-| Jenkins version | 2.580.1 (log, wizard footer, dashboard footer and About page) |
+| Jenkins version | 2.580.1 (start-up log, wizard footer and dashboard footer) |
 | Unlock | Initial admin password read from `/var/jenkins_home/secrets/initialAdminPassword` and accepted |
-| Plugins | "Install suggested plugins" completed: 92 plugins, including Git 5.10.1 and Pipeline (screenshots 15, 16 and 17) |
+| Plugins | "Install suggested plugins" completed: 92 plugins, including Git, Pipeline and Credentials Binding (screenshots 15 and 16) |
 | Admin user | Creation skipped; built-in `admin` logs in with the initial password (`/whoAmI/`: authenticated) |
-| Instance URL | `http://localhost:8080/` |
-| Security | Jenkins' own user database, "Logged-in users can do anything", anonymous read access denied: anonymous `GET /api/json` returns HTTP 403 (screenshot 17) |
 | Web UI | `http://localhost:8080/` shows "Welcome to Jenkins!"; `/login` answers HTTP 200 |
 
 ---
