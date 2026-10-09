@@ -1,0 +1,21 @@
+#include <tunables/global>
+
+/usr/bin/python3 {
+    # Deny access to sensitive system files
+    deny /etc/** r,
+    deny /var/** rw,
+
+    # Allow Flask app to bind to port 5000
+    network inet stream,
+
+    # Permissions to the application directory
+    /app/** rwk,
+
+    # Deny execution of any binaries in /bin or /usr/bin
+    deny /bin/** rmix,
+    deny /usr/bin/** rmix,
+
+    # Capability restrictions
+    capability net_bind_service,
+    deny capability sys_admin,
+}

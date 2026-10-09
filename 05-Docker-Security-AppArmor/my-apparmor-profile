@@ -1,0 +1,43 @@
+#include <tunables/global>
+
+# Corrected version of the exercise profile (the original is kept in
+# my-apparmor-profile.original). Docker selects a profile by its NAME
+# (--security-opt apparmor=<name>), so the profile is declared with the name
+# "my-apparmor-profile" instead of the attachment path /usr/bin/python3.
+# attach_disconnected/mediate_deleted are needed for container mount namespaces
+# (the same flags Docker's own docker-default profile uses).
+profile my-apparmor-profile flags=(attach_disconnected,mediate_deleted) {
+    #include <abstractions/base>
+
+    # Allow normal file access (python, Flask, /app, shared libraries).
+    # Without an allow rule the container's own entrypoint cannot start.
+    file,
+
+    # Allow Flask app to bind to port 5000
+    network inet stream,
+    network inet6 stream,
+
+    # Deny access to sensitive system files ("audit" logs every denial).
+    # Python needs /etc/ld.so.cache etc., so not all of /etc can be denied.
+    audit deny /etc/passwd r,
+    audit deny /etc/shadow r,
+    audit deny /etc/group r,
+    audit deny /etc/gshadow r,
+    audit deny /var/** rw,
+
+    # Deny execution of any binaries in /bin or /usr/bin (bash, sh, cat, ls, ...)
+    # by processes that are already confined by this profile. Note: the FIRST
+    # program of a "docker exec" is started by runc from outside the profile,
+    # so the kernel does not check this rule for it (see README, Issues & Fixes).
+    audit deny /{,usr/}bin/** x,
+
+    # Capability restrictions
+    capability net_bind_service,
+    deny capability sys_admin,
+    deny mount,
+
+    # Let the host (docker stop/kill) signal the container and its processes signal each other
+    signal (receive) peer=unconfined,
+    signal (send,receive) peer=my-apparmor-profile,
+    ptrace (trace,read,tracedby,readby) peer=my-apparmor-profile,
+}
