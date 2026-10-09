@@ -23,7 +23,7 @@ Use Minikube to run a single-node Kubernetes cluster locally, build a small Flas
 | `app.py` | Flask application that returns `Hello from Flask on Kubernetes!` on port 15000 |
 | `Dockerfile` | Builds the `flask-app` image from `python:3.8-slim` |
 | `flask-deployment.yaml` | Final version of the manifest: the `Deployment` plus the `NodePort` `Service` added in Step 13 |
-| `screenshot/` | Proof of every step, numbered in execution order |
+| `screenshot/` | Proof of each exercise step, numbered in execution order |
 
 ---
 
@@ -33,29 +33,12 @@ Use Minikube to run a single-node Kubernetes cluster locally, build a small Flas
 ```powershell
 minikube start
 ```
-**Status:** The existing `minikube` profile (docker driver) started successfully, and kubectl was configured to use the `minikube` context.
+**Status:** The existing `minikube` profile (docker driver) started successfully on Kubernetes v1.35.1, and kubectl was configured to use the `minikube` context.
 
 ![minikube start output](./screenshot/01-minikube-start.png)
 
-To confirm the cluster was healthy, I also checked the status and the node:
-```powershell
-minikube status
-kubectl get nodes
-```
-**Status:** host, kubelet and apiserver are `Running`, kubeconfig is `Configured`, and the node `minikube` is `Ready` on v1.35.1.
-
-![minikube status and kubectl get nodes](./screenshot/02-minikube-status-nodes.png)
-
 ### Steps 2 and 3: Create the Flask application and the Dockerfile
-I created `app.py` and `Dockerfile` exactly as given in the exercise.
-```powershell
-Get-ChildItem -Name
-Get-Content app.py
-Get-Content Dockerfile
-```
-**Status:** Both files exist in the lab folder with the exact content from the instructions. I created all three files at the start, so the listing in this screenshot already includes `flask-deployment.yaml`. Until Step 13 that file held only the Deployment.
-
-![app.py and Dockerfile contents](./screenshot/03-app-and-dockerfile.png)
+I created `app.py` and `Dockerfile` exactly as given in the exercise. Both files are in this folder.
 
 ### Step 4: Build the Docker image with Minikube's Docker daemon
 First I displayed the variables that `minikube docker-env` would set. Because this is PowerShell, I asked for the PowerShell syntax:
@@ -86,7 +69,7 @@ docker images flask-app
 ![docker build inside Minikube](./screenshot/06-docker-build-in-minikube.png)
 
 ### Steps 5 and 6: Create the Deployment YAML and deploy it
-`flask-deployment.yaml` (created at the start, see Steps 2 and 3) contains the Deployment exactly as given (one replica, `image: flask-app:latest`, `imagePullPolicy: Never`, `containerPort: 15000`) and applied it.
+At this point `flask-deployment.yaml` held only the Deployment, exactly as given (one replica, `image: flask-app:latest`, `imagePullPolicy: Never`, `containerPort: 15000`). I printed it and applied it.
 ```powershell
 Get-Content flask-deployment.yaml
 kubectl apply -f flask-deployment.yaml
@@ -163,7 +146,7 @@ minikube service flask-app-service --url
 
 ![minikube service --url output](./screenshot/15-minikube-service-url.png)
 
-*Note:* This image was rendered from the stdout and stderr that the background process wrote to its redirect files. The command did not actually return to a prompt. It kept running until I stopped it with `taskkill` (screenshot 19), so the trailing `PS ...>` prompt in the image is only part of the rendering.
+*Note:* This image was rendered from the stdout and stderr that the background process wrote to its redirect files. The command did not actually return to a prompt. It kept running until I stopped it with `taskkill` after testing, so the trailing `PS ...>` prompt in the image is only part of the rendering.
 
 While the tunnel was running, I called the URL from a second session ("terminal 2"):
 ```powershell
@@ -173,53 +156,29 @@ curl.exe -s http://127.0.0.1:50072
 
 ![curl through the minikube service tunnel](./screenshot/16-curl-service-url.png)
 
-I also opened the same URL in a browser (headless Microsoft Edge):
-
-![Browser showing the Flask response](./screenshot/17-browser-flask-app.png)
-
-### Extra: Cheat-sheet commands
-```powershell
-kubectl cluster-info
-minikube service list
-```
-**Status:** The control plane and CoreDNS are running behind `https://127.0.0.1:54500`. `minikube service list` shows `flask-app-service` with target port 15000. The URL column is empty, even though the background `minikube service flask-app-service --url` tunnel was still running when this screenshot was taken (it was stopped later, in screenshot 19). `minikube service list` does not open tunnels. Only `minikube service <name>` does that. With the docker driver on Windows, the node IP `192.168.49.2` cannot be routed from the host, so `service list` has no reachable NodePort URL to show (see Issues & Fixes item 4).
-
-![kubectl cluster-info and minikube service list](./screenshot/18-cluster-info-service-list.png)
-
-### Extra: Why the tunnel is needed, and stopping it
-```powershell
-curl.exe -sS -m 5 http://192.168.49.2:32423
-taskkill /T /F /PID 32676
-curl.exe -sS -m 5 http://127.0.0.1:50072
-```
-**Status:** The node IP plus NodePort (`192.168.49.2:32423`) times out from Windows, because the Minikube node lives on a Docker network inside the WSL2 VM that the Windows host cannot route to. I then stopped the background `minikube service` process and its children (the tunnel), and the tunnel URL immediately stops answering. This shows that the "keep the terminal open" requirement is real.
-
-![NodePort not reachable directly and tunnel stopped](./screenshot/19-tunnel-required-and-stopped.png)
-
 ---
 
 ## Issues & Fixes
 1. **`eval $(minikube docker-env)` does not work in PowerShell.** It is Bash syntax and fails with `The term 'eval' is not recognized` (screenshot 05). I used the PowerShell form that Minikube itself recommends, `& minikube -p minikube docker-env --shell powershell | Invoke-Expression`. Because those variables only last for the current shell session, I ran it in the same session as `docker build`. For the earlier display step, where the exercise says to run plain `minikube docker-env`, I added `--shell powershell` to ask for PowerShell syntax explicitly (screenshot 04). The variables are the same, but they are printed as `$Env:NAME = "value"` lines instead of Bash `export` lines.
 2. **`curl` in Windows PowerShell 5.1 is an alias for `Invoke-WebRequest`.** I called the real curl binary as `curl.exe`. For the successful request I added `-s`, because when output is captured curl otherwise prints its progress meter around the response. For the failure checks I used `-sS` so that the error is still printed.
-3. **`minikube service flask-app-service --url` blocks.** With the docker driver on Windows, Minikube keeps a tunnel open for as long as the command runs, so it never returns to the prompt. I ran it in the background (`Start-Process` with stdout and stderr redirected to files), read the URL from the file, tested it from a second session, and then stopped the process tree with `taskkill /T`. The local port is random on each run (`50072` here instead of `36157` in the exercise), and the warning text says "windows" instead of "linux".
-4. **The NodePort is not directly reachable from Windows.** `http://192.168.49.2:32423` timed out (screenshot 19), so on this machine the tunnel opened by `minikube service` is the correct way to reach the service. For the same reason, `minikube service list` shows an empty URL column.
-5. **`System.Management.Automation.RemoteException` lines in the build log (screenshot 06).** BuildKit writes its progress to stderr, and Windows PowerShell 5.1 turns each blank stderr line into an error record with that text. This is only cosmetic. The build finished (`naming to docker.io/library/flask-app done`), and the image is listed.
-6. **kubectl version skew warning.** The kubectl client is v1.37.0 and the cluster is v1.35.1, which exceeds the supported skew of ±1 minor version. Every command used in this lab worked normally, so I left it as is. `minikube kubectl --` would give a matching client if needed.
-7. **Leftovers from Lab 01.** The `hello-k8s` pod and service from Lab 01 still exist in the cluster and show up in `kubectl get services` and `minikube service list`. I did not touch them.
-8. **Differences from the expected output in the exercise.** Pod and ReplicaSet names, the pod IP (`10.244.0.6` instead of `10.0.0.210`) and the tunnel port are generated by the cluster, so they naturally differ. `python:3.8-slim` is an end-of-life Python version, so pip installed Flask 3.0.3, the last release that supports Python 3.8. The Dockerfile was kept exactly as written.
+3. **`minikube service flask-app-service --url` blocks.** With the docker driver on Windows, the Minikube node IP is not routable from the host, so Minikube keeps a tunnel open for as long as the command runs, and it never returns to the prompt. I ran it in the background (`Start-Process` with stdout and stderr redirected to files), read the URL from the file, tested it from a second session, and then stopped the process tree with `taskkill /T`. The local port is random on each run (`50072` here instead of `36157` in the exercise), and the warning text says "windows" instead of "linux".
+4. **`System.Management.Automation.RemoteException` lines in the build log (screenshot 06).** BuildKit writes its progress to stderr, and Windows PowerShell 5.1 turns each blank stderr line into an error record with that text. This is only cosmetic. The build finished (`naming to docker.io/library/flask-app done`), and the image is listed.
+5. **kubectl version skew warning.** The kubectl client is v1.37.0 and the cluster is v1.35.1, which exceeds the supported skew of ±1 minor version. Every command used in this lab worked normally, so I left it as is. `minikube kubectl --` would give a matching client if needed.
+6. **Leftovers from Lab 01.** The `hello-k8s` pod and service from Lab 01 still exist in the cluster and show up in `kubectl get services`. I did not touch them.
+7. **Differences from the expected output in the exercise.** Pod and ReplicaSet names, the pod IP (`10.244.0.6` instead of `10.0.0.210`) and the tunnel port are generated by the cluster, so they naturally differ. `python:3.8-slim` is an end-of-life Python version, so pip installed Flask 3.0.3, the last release that supports Python 3.8. The Dockerfile was kept exactly as written.
 
 ---
 
 ## Verification Summary
 | Check | Result |
 |-------|--------|
-| Minikube cluster | `minikube` profile Running, node `Ready`, Kubernetes v1.35.1 |
+| Minikube cluster | `minikube` profile started (docker driver), kubectl configured, Kubernetes v1.35.1 |
 | Image | `flask-app:latest` built inside Minikube's Docker daemon (136 MB) |
 | Deployment | `flask-app` 1/1 Ready, Available |
 | Pod | `flask-app-6d58f88547-2dpb4` 1/1 Running, 0 restarts, Flask listening on 0.0.0.0:15000 |
 | Direct access before the Service | `curl.exe http://127.0.0.1:15000` fails (expected) |
 | Service | `flask-app-service` NodePort `15000:32423/TCP`, endpoint `10.244.0.6:15000` |
-| Access through Minikube | `http://127.0.0.1:50072` returned `Hello from Flask on Kubernetes!` in curl and in the browser |
+| Access through Minikube | `http://127.0.0.1:50072` returned `Hello from Flask on Kubernetes!` |
 
 ---
 
@@ -241,7 +200,7 @@ Minikube looks up the Service in the cluster and checks that it exists and has a
 First, expose the pods with a Service (here a NodePort Service). Then run `minikube service <service-name> --url` to get a reachable URL, and open it with curl or a browser while the command is still running. Other options are `kubectl port-forward service/flask-app-service 8085:15000`, or a LoadBalancer Service combined with `minikube tunnel`.
 
 **Q6: Why does the terminal need to remain open when using Docker driver on Linux with Minikube?**
-With the docker driver, the Minikube "node" is a Docker container on a private Docker network. On Windows and macOS that network sits inside Docker Desktop's VM, so the host cannot reach the node IP and NodePort directly (the request to `192.168.49.2:32423` timed out in this lab). `minikube service` works around this by running a tunnel process that forwards a local `127.0.0.1` port into the cluster. That tunnel only exists while the command is running, so closing the terminal (or stopping the process) ends it, and the URL stops working, as screenshot 19 shows. The exercise's "Linux" case is a WSL shell that uses Docker Desktop. There the Minikube Docker network is also unreachable from the shell, so Minikube opens the same SSH tunnel and prints the "Docker driver on linux" warning, and that tunnel also needs the terminal to stay open. (On a native Linux host running Docker Engine, the node IP is normally routable and no tunnel is needed.)
+With the docker driver, the Minikube "node" is a Docker container on a private Docker network. On Windows and macOS that network sits inside Docker Desktop's VM, so the host cannot reach the node IP and NodePort directly. `minikube service` works around this by running a tunnel process that forwards a local `127.0.0.1` port into the cluster. That tunnel only exists while the command is running, so closing the terminal (or stopping the process) ends it, and the URL stops working. Minikube prints this warning itself (screenshot 15). The exercise's "Linux" case is a WSL shell that uses Docker Desktop. There the Minikube Docker network is also unreachable from the shell, so Minikube opens the same SSH tunnel and prints the "Docker driver on linux" warning, and that tunnel also needs the terminal to stay open. (On a native Linux host running Docker Engine, the node IP is normally routable and no tunnel is needed.)
 
 **Q7: What is the benefit of using the `--url` flag with the `minikube service` command?**
 It prints a ready-to-use URL instead of trying to open a browser. You do not have to look up the node IP, the NodePort or the tunnel port yourself, and the URL can be passed straight to tools such as curl, scripts or tests.
@@ -253,7 +212,7 @@ You can do it imperatively with `kubectl expose`, for example `kubectl expose de
 Minikube runs a complete single-node Kubernetes cluster on a laptop, here as a Docker container. You can practise real `kubectl` workflows (Deployments, Services, logs, rollouts) without a cloud account or a multi-machine cluster. It also adds helpers for local work, such as `minikube docker-env` for building images straight into the cluster without a registry, `minikube service` and `minikube tunnel` for reaching services, add-ons, and quick start, stop and delete commands.
 
 **Q10: What is the role of kubectl in this setup?**
-kubectl is the command-line client for the Kubernetes API server. In this lab I used it to send the desired state to the cluster (`kubectl apply`) and to inspect the result (`get deployments`, `get pods`, `describe deployment`, `get services`, `get endpoints`, `cluster-info`). I also used it to read the application's output (`kubectl logs`). Minikube creates and manages the cluster, and kubectl is how you work with what runs inside it.
+kubectl is the command-line client for the Kubernetes API server. In this lab I used it to send the desired state to the cluster (`kubectl apply`) and to inspect the result (`get deployments`, `get pods`, `describe deployment`, `get services`, `get endpoints`). I also used it to read the application's output (`kubectl logs`). Minikube creates and manages the cluster, and kubectl is how you work with what runs inside it.
 
 ---
 
