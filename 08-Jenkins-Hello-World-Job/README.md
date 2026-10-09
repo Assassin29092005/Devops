@@ -19,9 +19,9 @@ Put a tiny shell script (`hello-world.sh`) into a new public GitHub repository, 
 |---|---|
 | `README.md` | This lab report. |
 | `devops-sample-code/hello-world.sh` | Copy of the script exactly as it was committed and pushed (LF line endings, executable). The working git repository itself lives outside `D:\Devops` so that no nested `.git` folder ends up in this lab repository. |
-| `create_hello_world_job.py` | Playwright script that clicked through the Jenkins UI (New Item, configure, Save, Build Now, Console Output) and took screenshots 11-20. It depends on the session's `shot.py` helper and the Jenkins login state saved in Lab 07, both in the temporary session scratch folder and not included here, so it is a record of the run rather than a standalone script. |
+| `create_hello_world_job.py` | Playwright script that clicked through the Jenkins UI (New Item, configure, Save, Build Now, Console Output) and took the Jenkins screenshots of Part B. It depends on the session's `shot.py` helper and the Jenkins login state saved in Lab 07, both in the temporary session scratch folder and not included here, so it is a record of the run rather than a standalone script. |
 | `HelloWorld-config.xml` | The job definition Jenkins saved (`/var/jenkins_home/jobs/HelloWorld/config.xml`), exported after the run as a record of the final configuration. |
-| `screenshot/` | PNG evidence, numbered in execution order. |
+| `screenshot/` | PNG evidence, numbered in execution order. Only the screenshots needed as proof were kept, so the numbering has gaps. |
 
 ---
 
@@ -39,8 +39,6 @@ gh repo view Assassin29092005/devops-sample-code --json nameWithOwner,descriptio
 * **Status:** Repository `Assassin29092005/devops-sample-code` created as `PUBLIC` with the description "A demo repository for Jenkins scripting." (still empty at this point). The terminal output of `gh repo create` itself was lost because of a screenshot-tool crash, so the screenshot shows the verification commands instead (see Issues & Fixes #1).
 
 ![gh auth status and gh repo view showing the new public, empty repository](./screenshot/01-gh-repo-created.png)
-
-![The new repository on github.com, still empty](./screenshot/02-github-empty-repo.png)
 
 #### Step 1b: Personal access token (PAT)
 ```powershell
@@ -101,9 +99,7 @@ git log --stat
 git remote add origin https://github.com/Assassin29092005/devops-sample-code.git
 git remote -v
 ```
-* **Status:** Remote `origin` points to the new repository for fetch and push.
-
-![git remote add origin and git remote -v](./screenshot/07-git-remote-add.png)
+* **Status:** `git remote -v` lists `origin` as the new repository for fetch and push. The push in Step 6 (screenshot 08) confirms it: git pushes to `https://github.com/Assassin29092005/devops-sample-code.git`.
 
 #### Step 6: Push the script to GitHub
 ```powershell
@@ -117,9 +113,7 @@ git ls-remote origin
 
 #### Step 7: Verify the script on GitHub
 Opened <https://github.com/Assassin29092005/devops-sample-code> and then the `hello-world.sh` file page.
-* **Status:** The public repository shows one commit and the file `hello-world.sh`. The commit is credited to "Assassin29092005 and claude", and the Contributors box shows 2 (`claude` and `Assassin29092005`) because of the co-author trailer (see Issues & Fixes #9). The file page labels it "Executable File, 2 lines, 35 Bytes" with the expected two lines.
-
-![Repository page on GitHub showing hello-world.sh on main](./screenshot/09-github-repo-with-script.png)
+* **Status:** `hello-world.sh` is on branch `main` of the public repository. The file page labels it "Executable File, 2 lines, 35 Bytes" and shows the expected two lines. The commit is credited to "Assassin29092005 and claude" because of the co-author trailer (see Issues & Fixes #9).
 
 ![hello-world.sh on GitHub, marked as an executable file](./screenshot/10-github-hello-world-sh.png)
 
@@ -128,9 +122,7 @@ All of Part B was performed in the Jenkins web UI by `create_hello_world_job.py`
 
 #### Step 1: Access Jenkins
 Opened <http://localhost:8080> with the `admin` session saved in Lab 07 (the script first checks `/whoAmI/api/json` to confirm the user is `admin`).
-* **Status:** Dashboard "Welcome to Jenkins!" with no jobs yet, Jenkins 2.580.1, 0 of 2 executors busy.
-
-![Jenkins dashboard, logged in, no jobs yet](./screenshot/11-jenkins-dashboard.png)
+* **Status:** Logged in as `admin` on Jenkins 2.580.1, which had no jobs yet.
 
 #### Step 2: Create a new job
 **New Item** -> item name `HelloWorld` -> **Freestyle project** -> **OK**.
@@ -139,9 +131,7 @@ Opened <http://localhost:8080> with the `admin` session saved in Lab 07 (the scr
 ![New Item page with the name HelloWorld and Freestyle project selected](./screenshot/12-new-item-freestyle-project.png)
 
 #### Step 3: Configure the job
-**General -> Description:** `Hello World! Jenkins job.`
-
-![General section with the job description](./screenshot/13-configure-general-description.png)
+**General -> Description:** `Hello World! Jenkins job.` (the saved description is visible on the job page in Step 4, screenshot 18).
 
 **Source Code Management -> Git -> Repository URL:** `https://github.com/Assassin29092005/devops-sample-code.git` (no credentials needed because the repository is public). Jenkins pre-fills **Branch Specifier** with `*/master`, a branch that does not exist in this repository:
 
@@ -160,9 +150,7 @@ sh hello-world.sh
 
 #### Step 4: Save and run the job
 Clicked **Save**, which opened the job page, then **Build Now** (Dashboard -> HelloWorld -> Build Now).
-* **Status:** Job page shows the description and "No builds" right after saving; after Build Now, build `#1` appears in the Builds panel with a green tick and all permalinks (last build, last stable, last successful, last completed) point to `#1`.
-
-![Job page right after Save, no builds yet](./screenshot/17-job-page-after-save.png)
+* **Status:** After Build Now, the job page shows the description `Hello World! Jenkins job.`, build `#1` appears in the Builds panel with a green tick, and all permalinks (last build, last stable, last successful, last completed) point to `#1`.
 
 ![Job page after Build Now: build #1 succeeded](./screenshot/18-job-page-build-history.png)
 
@@ -176,33 +164,21 @@ Hello, Jenkins!
 Finished: SUCCESS
 ```
 
-![Build #1 page with the git revision and repository](./screenshot/19-build-1-page.png)
-
 ![Console Output of build #1: Hello, Jenkins! and Finished: SUCCESS](./screenshot/20-build-1-console-output.png)
-
-#### Extra verification from inside the Jenkins container
-```powershell
-docker exec jenkins git ls-remote --heads https://github.com/Assassin29092005/devops-sample-code.git
-docker exec jenkins ls -l /var/jenkins_home/workspace/HelloWorld
-docker exec jenkins cat /var/jenkins_home/jobs/HelloWorld/config.xml
-```
-* **Status:** The repository has only one branch, `refs/heads/main` (so `*/master` really could not have matched anything); the checked-out `hello-world.sh` in the Jenkins workspace is `-rwxr-xr-x`, so the executable bit set in Step 4 survived the round trip; the saved `config.xml` contains the description, the repository URL, `*/main` and the `sh hello-world.sh` shell builder. The same XML is saved as `HelloWorld-config.xml` in this folder.
-
-![Only refs/heads/main exists, executable script in the workspace, saved job config.xml](./screenshot/21-jenkins-side-verification.png)
 
 ---
 
 ## Issues & Fixes
 
-1. **Screenshot tool crashed after `gh repo create` had already run.** The first capture ran `gh auth status`, `gh repo create ...` and `gh repo view ...` for real, but when the helper printed the transcript to the Windows console, Python's default `cp1252` encoding could not print the check mark (U+2713) in the `gh auth status` output. The helper crashed before rendering the PNG, so the creation output was lost even though the repository had been created (GitHub reports `createdAt 2026-10-07T08:08:36Z` with the requested description and `PUBLIC` visibility). Deleting and re-creating the repository just to re-take the picture was not worth it, so screenshot 01 shows `gh auth status` plus `gh repo view` of the freshly created, still empty repository, and screenshot 02 shows the empty repository on github.com. Every later capture was run with `PYTHONIOENCODING=utf-8`, which fixed the crash.
+1. **Screenshot tool crashed after `gh repo create` had already run.** The first capture ran `gh auth status`, `gh repo create ...` and `gh repo view ...` for real, but when the helper printed the transcript to the Windows console, Python's default `cp1252` encoding could not print the check mark (U+2713) in the `gh auth status` output. The helper crashed before rendering the PNG, so the creation output was lost even though the repository had been created (GitHub reports `createdAt 2026-10-07T08:08:36Z` with the requested description and `PUBLIC` visibility). Deleting and re-creating the repository just to re-take the picture was not worth it, so screenshot 01 shows `gh auth status` plus `gh repo view` of the freshly created, still empty repository. Every later capture was run with `PYTHONIOENCODING=utf-8`, which fixed the crash.
 2. **Step 1b (fine-grained PAT) was not performed.** The GitHub CLI on this machine is already logged in with an OAuth token that has the `repo` scope. Creating another long-lived token and pasting it into a password prompt would only add a secret that has to be stored and revoked later. Pushes used `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push ...`: the first `-c` clears the machine's default helper (Git Credential Manager) for this command only, and the second makes git ask `gh` for the credentials, so no password prompt appears and nothing is written to the global configuration.
-3. **`touch` and `chmod +x` do not work on Windows.** Windows PowerShell has no `touch`, so `New-Item -ItemType File` created the empty file. NTFS has no Unix executable bit and Git for Windows runs with `core.filemode=false`, so `chmod +x` would have had no effect on the commit. The executable bit was recorded in Git instead with `git update-index --chmod=+x hello-world.sh`, which gave `create mode 100755` in the commit, "Executable File" on GitHub and `-rwxr-xr-x` in the Jenkins workspace.
+3. **`touch` and `chmod +x` do not work on Windows.** Windows PowerShell has no `touch`, so `New-Item -ItemType File` created the empty file. NTFS has no Unix executable bit and Git for Windows runs with `core.filemode=false`, so `chmod +x` would have had no effect on the commit. The executable bit was recorded in Git instead with `git update-index --chmod=+x hello-world.sh`, which gave `create mode 100755` in the commit (screenshot 06) and "Executable File" on GitHub (screenshot 10).
 4. **Branch name mismatch inside the exercise, and line endings.** The exercise runs plain `git init` (its sample output shows `On branch master`) but later pushes with `git push -u origin main`. On this machine `init.defaultBranch` is `master`, so following the text literally would have produced a `master` branch and the push of `main` would have failed with "src refspec main does not match any". Using `git init -b main` keeps the push command exactly as written. Separately, Git for Windows is configured with `core.autocrlf=true`, which printed the warning "LF will be replaced by CRLF the next time Git touches it" during `git add`. The warning only concerns future checkouts on Windows: the committed blob is LF (`i/lf` in screenshot 05), which is what Jenkins checks out on Linux.
-5. **Jenkins defaults the Branch Specifier to `*/master`.** The exercise only says to enter the repository URL, but the Git plugin pre-fills "Branches to build" with `*/master` (screenshot 14), and this repository only has `main` (screenshot 21). With the default value the build would have stopped with Jenkins' "Couldn't find any revision to build" error. The specifier was set to `*/main` before saving (screenshot 15), and build #1 checked out `refs/remotes/origin/main`.
+5. **Jenkins defaults the Branch Specifier to `*/master`.** The exercise only says to enter the repository URL, but the Git plugin pre-fills "Branches to build" with `*/master` (screenshot 14), and this repository only has `main` (`git ls-remote origin` in screenshot 08 lists only `refs/heads/main`). With the default value the build would have stopped with Jenkins' "Couldn't find any revision to build" error. The specifier was set to `*/main` before saving (screenshot 15), and build #1 checked out `refs/remotes/origin/main`.
 6. **Placeholder URLs in the exercise.** Step 7 of the GitHub part points to `https://github.com/<your-GitHub-username>/DevOps` and the Jenkins part to `https://github.com/<your-username>/repo.git`. Both are placeholders; the real repository `https://github.com/Assassin29092005/devops-sample-code(.git)` was used in both places.
-7. **The UI automation needed three attempts before the final clean run.** The first run of `create_hello_world_job.py` stopped because the configure-page sections in Jenkins 2.580.1 have hex-encoded element ids, so the selector `#source-code-management` did not exist. The second run stopped because the first `_.name` input on the page is a hidden field (the repository "Name" under Advanced), not the Branch Specifier. In the third run every step succeeded, but the Source Code Management screenshot cut the Branch Specifier field off behind Jenkins' sticky Save bar. Each time, the half-made `HelloWorld` job was deleted, the selectors or scrolling were fixed, and the script was run again from New Item. Before the last run the leftover workspace folder `/var/jenkins_home/workspace/HelloWorld` was also removed, because deleting a job in Jenkins does not delete its workspace and the build would otherwise have fetched into the old clone instead of cloning. Screenshots 11-20 therefore all come from one complete run, and build #1 in them is a genuine first-time clone.
-8. **Console output differs slightly from the exercise's sample.** The sample shows only `+ echo 'Hello, Jenkins!'`. The real log also has the Git checkout lines (the job now has Source Code Management configured), and the trace line is `+ sh hello-world.sh`: Jenkins runs the build step with `/bin/sh -xe`, which traces the step's own command, while the script itself runs in a child `sh` without `-x`, so only its output `Hello, Jenkins!` appears. The user name is shown as `admin`, the account used in this Jenkins. Times in Jenkins screenshots are in UTC (08:17), while the terminal screenshots show local IST (13:47).
-9. **The commit carries a co-author trailer, so GitHub lists a second contributor.** The exercise commits with `git commit -m "Add hello-world.sh"`. This lab was carried out with the AI coding assistant Claude Code, which by convention marks commits it creates with a co-author line, so the command had a second `-m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"` (screenshot 06). The second `-m` only adds a paragraph to the commit message: the author is still `Assassin29092005`, and the committed file is unchanged. GitHub, however, reads `Co-Authored-By` trailers and links the email address in this one to the GitHub account `claude`, so the repository page credits the commit to "Assassin29092005 and claude" and shows "Contributors 2" (screenshot 09). This does not affect the Jenkins job. Removing the trailer now would need a rewritten commit and a force-push, and Jenkins build #1 was made from commit `d4c5988`, so it was left as is.
+7. **The UI automation needed three attempts before the final clean run.** The first run of `create_hello_world_job.py` stopped because the configure-page sections in Jenkins 2.580.1 have hex-encoded element ids, so the selector `#source-code-management` did not exist. The second run stopped because the first `_.name` input on the page is a hidden field (the repository "Name" under Advanced), not the Branch Specifier. In the third run every step succeeded, but the Source Code Management screenshot cut the Branch Specifier field off behind Jenkins' sticky Save bar. Each time, the half-made `HelloWorld` job was deleted, the selectors or scrolling were fixed, and the script was run again from New Item. Before the last run the leftover workspace folder `/var/jenkins_home/workspace/HelloWorld` was also removed, because deleting a job in Jenkins does not delete its workspace and the build would otherwise have fetched into the old clone instead of cloning. The Jenkins screenshots in Part B therefore all come from one complete run, and build #1 in them is a genuine first-time clone.
+8. **Console output differs slightly from the exercise's sample.** The sample shows only `+ echo 'Hello, Jenkins!'`. The real log also has the Git checkout lines (the job now has Source Code Management configured), and the trace line is `+ sh hello-world.sh`: Jenkins runs the build step with `/bin/sh -xe`, which traces the step's own command, while the script itself runs in a child `sh` without `-x`, so only its output `Hello, Jenkins!` appears. The user name is shown as `admin`, the account used in this Jenkins. Times in Jenkins screenshots are in UTC (build #1 ran at 08:17 UTC, which is 13:47 IST), while the terminal screenshots show local IST.
+9. **The commit carries a co-author trailer, so GitHub lists a second contributor.** The exercise commits with `git commit -m "Add hello-world.sh"`. This lab was carried out with the AI coding assistant Claude Code, which by convention marks commits it creates with a co-author line, so the command had a second `-m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"` (screenshot 06). The second `-m` only adds a paragraph to the commit message: the author is still `Assassin29092005`, and the committed file is unchanged. GitHub, however, reads `Co-Authored-By` trailers and links the email address in this one to the GitHub account `claude`, so GitHub credits the commit to "Assassin29092005 and claude" (screenshot 10) and counts `claude` as a second contributor of the repository. This does not affect the Jenkins job. Removing the trailer now would need a rewritten commit and a force-push, and Jenkins build #1 was made from commit `d4c5988`, so it was left as is.
 
 ---
 
@@ -228,7 +204,7 @@ A: GitHub no longer accepts account passwords for Git over HTTPS. When `git push
 A: It tells the Git plugin which remote branch to build. Jenkins pre-fills `*/master`, but repositories created today (and this one) use `main`. If the pattern matches no branch, the build fails before any build step runs.
 
 **Q: Is the executable bit needed when the job runs `sh hello-world.sh`?**
-A: Not strictly. `sh hello-world.sh` passes the file to the shell as an argument, so it runs even without execute permission. The bit matters when the script is started directly as `./hello-world.sh`, which is why the exercise sets it with `chmod +x`. Here it was recorded in Git, and Jenkins checked the file out as `-rwxr-xr-x`.
+A: Not strictly. `sh hello-world.sh` passes the file to the shell as an argument, so it runs even without execute permission. The bit matters when the script is started directly as `./hello-world.sh`, which is why the exercise sets it with `chmod +x`. Here it was recorded in Git (mode `100755`), so GitHub shows the file as an "Executable File".
 
 **Q: What does a Freestyle project do in this lab?**
 A: It is Jenkins' classic job type, configured entirely through web forms. On every build it checks out the configured repository into the job's workspace (`/var/jenkins_home/workspace/HelloWorld`), runs the build steps one after another (here a single shell command), and records the console log and the result.
