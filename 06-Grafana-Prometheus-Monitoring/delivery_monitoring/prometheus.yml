@@ -1,0 +1,12 @@
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "delivery_service"
+    static_configs:
+      # Windows / Docker Desktop: host.docker.internal reaches the host (exercise used 172.17.0.1 for Linux)
+      - targets: ["host.docker.internal:8000"]
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml

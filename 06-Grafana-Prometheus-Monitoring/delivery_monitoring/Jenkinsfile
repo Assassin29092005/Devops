@@ -1,0 +1,74 @@
+// Lab 06 - adapted for Jenkins running in a Docker container on Docker Desktop (Windows).
+// Exercise original: Jenkinsfile.original. Changes are marked with "Lab 06:".
+pipeline {
+    agent any
+    stages {
+        stage('Pre-check Docker') {
+            steps {
+                script {
+                    try {
+                        // Check if Docker is installed
+                        def dockerVersion = sh(script: 'docker --version', returnStdout: true).trim()
+                        if (!dockerVersion) {
+                            error "Docker is not installed or not in the PATH. Please install Docker."
+                        }
+
+                        // Check if Docker daemon is running
+                        def dockerInfo = sh(script: 'docker info', returnStatus: true)
+                        if (dockerInfo != 0) {
+                            error "Docker daemon is not running. Please start the Docker service."
+                        }
+
+                        echo "Docker is available and running: ${dockerVersion}"
+                    } catch (Exception e) {
+                        error "Pre-check failed: ${e.message}"
+                    }
+                }
+            }
+        }
+        stage('Setup Workspace') {
+            steps {
+                script {
+                    // Lab 06: the files were copied into the Jenkins container with
+                    //   docker cp delivery_monitoring jenkins:/var/jenkins_home/delivery_monitoring
+                    def localSourcePath = '/var/jenkins_home/delivery_monitoring'
+                    def workspacePath = env.WORKSPACE
+
+                    // Copy necessary files into the Jenkins workspace (Lab 06: plus the Dockerfile)
+                    sh """
+                    cp ${localSourcePath}/delivery_metrics.py ${workspacePath}/
+                    cp ${localSourcePath}/prometheus.yml ${workspacePath}/
+                    cp ${localSourcePath}/alert_rules.yml ${workspacePath}/
+                    cp ${localSourcePath}/Dockerfile ${workspacePath}/
+                    """
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t delivery_metrics .'
+            }
+        }
+        stage('Run Application') {
+            steps {
+                // Lab 06: remove the container of a previous build so the pipeline can be re-run
+                sh 'docker rm -f delivery_metrics || true'
+                sh 'docker run -d -p 8000:8000 --name delivery_metrics delivery_metrics'
+            }
+        }
+        stage('Run Prometheus & Grafana') {
+            steps {
+                // Lab 06: $WORKSPACE exists only inside the Jenkins container, so the Docker Desktop daemon
+                // cannot bind-mount it (-v). Create the container, copy the two config files in, then start it.
+                sh '''
+                docker rm -f prometheus grafana || true
+                docker create --name prometheus -p 9090:9090 prom/prometheus
+                docker cp $WORKSPACE/prometheus.yml prometheus:/etc/prometheus/prometheus.yml
+                docker cp $WORKSPACE/alert_rules.yml prometheus:/etc/prometheus/alert_rules.yml
+                docker start prometheus
+                docker run -d --name grafana -p 3000:3000 grafana/grafana
+                '''
+            }
+        }
+    }
+}
