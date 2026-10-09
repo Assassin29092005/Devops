@@ -1,0 +1,43 @@
+# Additional challenge: the same flash-sale app as a Deployment instead of a bare ReplicaSet.
+# It uses its own name and label (app: flashsale-deploy) so it does not adopt or fight the
+# pods of flashsale-rs (app: flashsale) and is not selected by flashsale-svc.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flashsale-deploy
+  labels:
+    app: flashsale-deploy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: flashsale-deploy
+  template:
+    metadata:
+      labels:
+        app: flashsale-deploy
+    spec:
+      containers:
+      - name: flashsale-container
+        image: flashsale:1.0
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
