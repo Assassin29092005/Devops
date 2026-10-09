@@ -11,7 +11,7 @@ Understand Docker networking by creating a user-defined bridge network and runni
 * **Flask image base:** `python:3.9-slim` (Debian GNU/Linux 13 "trixie")
 * **Python packages in the image:** Flask `2.0.1`, Werkzeug `2.0.3` (pinned, see Issues & Fixes)
 * **Other images:** `mysql:latest` (digest `9d48c42f8341…`, entrypoint reports MySQL Server 26.7.0), `redis:latest` (digest `c94085d298b7…`)
-* **Host tools:** `curl.exe` (the real curl that ships with Windows), Microsoft Edge for the browser screenshot
+* **Host tools:** `curl.exe` (the real curl that ships with Windows)
 
 ---
 
@@ -21,12 +21,12 @@ Understand Docker networking by creating a user-defined bridge network and runni
 | `app.py` | Flask REST API with a single `GET /about` endpoint. Changed from the exercise by adding `host='0.0.0.0'` to `app.run(...)` plus one explanatory comment line above it. |
 | `requirements.txt` | `Flask==2.0.1` as in the exercise, plus `Werkzeug==2.0.3` so that Flask 2.0.1 can start. |
 | `Dockerfile` | Exactly as given in the exercise (`python:3.9-slim`, copy files, `pip install`, `EXPOSE 5001`, `CMD ["python", "app.py"]`). |
-| `screenshot/` | 21 PNG screenshots of the real commands and their output, in execution order. |
+| `screenshot/` | 13 PNG screenshots of the key commands and their output, in execution order. The numbering has gaps because screenshots of intermediate steps were removed. |
 
 ---
 
 ## Step-by-Step Execution
-Each code block below lists exactly the commands that the screenshot under it ran, including small helper commands such as `Start-Sleep` or `Get-Content`. Where a command from the exercise was wrapped for the screenshot (for example `cmd /c "... 2>&1"`), the status line says so and Issue 7 explains why.
+Each code block below lists exactly the commands that were run for that step. Where a screenshot follows the block, it shows those same commands and their output, including small helper commands such as `Start-Sleep` or `Get-Content`. Where a command from the exercise was wrapped for the screenshot (for example `cmd /c "... 2>&1"`), the status line says so and Issue 7 explains why.
 
 ### Task 1: Create a bridge network
 ```powershell
@@ -54,23 +54,13 @@ docker network inspect my-bridge-net
 ![docker network inspect my-bridge-net before any container is attached](./screenshot/03-network-inspect.png)
 
 ### Task 4: Create the Flask app files and build the image
-The three files were first created exactly as written in the exercise.
-
-```powershell
-Get-ChildItem -File | Select-Object Name, Length
-Get-Content app.py
-Get-Content requirements.txt
-Get-Content Dockerfile
-```
-![app.py, requirements.txt and Dockerfile exactly as given in the exercise](./screenshot/04-code-files-as-given.png)
+The three files (`app.py`, `requirements.txt`, `Dockerfile`) were first created exactly as written in the exercise.
 
 ```powershell
 cmd /c "docker build --no-cache -t flask-api . 2>&1"
 docker images flask-api
 ```
-* **Status:** The build succeeds. Note in the pip output that `Flask==2.0.1` pulls in **Werkzeug 3.1.9**, because Flask 2.0.1 only requires `Werkzeug>=2.0`. This becomes a problem at runtime (next steps). The command is the exercise's `docker build -t flask-api .`, wrapped in `cmd /c "... 2>&1"` and run with `--no-cache`; see Issues 7 and 8 for why.
-
-![docker build of flask-api with the original files (no cache), installing Werkzeug 3.1.9](./screenshot/05-docker-build-original.png)
+* **Status:** The build succeeds. However, pip installs `Flask==2.0.1` together with **Werkzeug 3.1.9**, because Flask 2.0.1 only requires `Werkzeug>=2.0`. This becomes a problem at runtime (next steps). The command is the exercise's `docker build -t flask-api .`, wrapped in `cmd /c "... 2>&1"` (see Issue 7) and run with `--no-cache` so that pip's real dependency resolution is printed instead of cached steps.
 
 ### Task 4: Pull MySQL and Redis
 ```powershell
@@ -79,9 +69,7 @@ cmd /c "docker pull redis:latest 2>&1"
 docker images --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" mysql
 docker images --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" redis
 ```
-* **Status:** Both images downloaded (`mysql:latest` 1.3 GB, `redis:latest` 213 MB). `docker run` would also pull them automatically; pulling first just keeps the next screenshot readable. The pulls are wrapped in `cmd /c "... 2>&1"` (Issue 7).
-
-![Pulling mysql:latest and redis:latest](./screenshot/06-pull-mysql-redis.png)
+* **Status:** Both images downloaded (`mysql:latest` 1.3 GB, `redis:latest` 213 MB). `docker run` would also pull them automatically; pulling first just keeps the `docker run` output short. The pulls are wrapped in `cmd /c "... 2>&1"` (Issue 7).
 
 ### Task 4: Launch the containers exactly as written (first attempt)
 ```powershell
@@ -92,8 +80,6 @@ Start-Sleep -Seconds 15
 docker ps -a --filter "name=^(mysql|redis|flask)$" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 ```
 * **Status:** All three containers start, but after 15 seconds only `redis` is still `Up`. Both `mysql` and `flask` are `Exited (1)`.
-
-![Containers launched as written: mysql and flask exited, only redis is up](./screenshot/07-run-containers-as-given.png)
 
 ```powershell
 docker logs mysql
@@ -114,9 +100,7 @@ Get-Content requirements.txt
 cmd /c "docker build --no-cache -t flask-api . 2>&1"
 docker run --rm flask-api pip list --disable-pip-version-check
 ```
-* **Status:** The image now contains Flask 2.0.1 with Werkzeug 2.0.3, a compatible pair. The build is again wrapped in `cmd /c "... 2>&1"` and run with `--no-cache` so the pip resolution is visible.
-
-![Rebuild with Werkzeug pinned to 2.0.3; pip list inside the image](./screenshot/09-fix1-pin-werkzeug-rebuild.png)
+* **Status:** The image now contains Flask 2.0.1 with Werkzeug 2.0.3, a compatible pair. The same pinned install (`Werkzeug==2.0.3`) is visible in the pip output of the Fix 3 rebuild below (screenshot 12).
 
 ### Fix 2: Re-run MySQL with a generated root password, re-run Flask
 ```powershell
@@ -156,7 +140,7 @@ docker run -d --name flask --net=my-bridge-net -p 5001:5001 flask-api
 Start-Sleep -Seconds 5
 docker logs flask
 ```
-* **Status:** Flask now reports `Running on all addresses` and `Running on http://172.18.0.4:5001/`.
+* **Status:** The rebuild installs Flask 2.0.1 with the pinned Werkzeug 2.0.3 (Fix 1), and the new container starts without the import error. Flask now reports `Running on all addresses` and `Running on http://172.18.0.4:5001/`.
 
 ![app.py with host='0.0.0.0', rebuild and new flask container listening on all addresses](./screenshot/12-fix3-host-0000-rebuild-run.png)
 
@@ -169,10 +153,6 @@ curl.exe -sS http://localhost:5001/about
 * **Status:** `flask`, `mysql` and `redis` are all `Up` and attached to `my-bridge-net`. Only `flask` publishes a port (`0.0.0.0:5001->5001/tcp`). `curl.exe` returns the JSON from `/about`.
 
 ![mysql, redis and flask running on my-bridge-net; curl.exe /about returns JSON](./screenshot/13-three-containers-running-curl-about.png)
-
-The same endpoint opened in Microsoft Edge at `http://localhost:5001/about`:
-
-![Browser showing the /about JSON response](./screenshot/14-browser-about.png)
 
 ### Task 5: Test connectivity between the containers
 The exercise uses `docker exec -it flask bash` and then types `ping mysql` interactively. The equivalent non-interactive form, `docker exec flask <command>`, runs the very same commands inside the same container and was used here so that each command and its output could be captured.
@@ -214,32 +194,6 @@ docker exec flask python -c "import socket; s=socket.create_connection(('redis',
 
 ![getent, resolv.conf (nameserver 127.0.0.11), /etc/hosts and a Redis PING/PONG over TCP](./screenshot/18-embedded-dns.png)
 
-#### Inspect the network again
-```powershell
-docker network inspect my-bridge-net --format "{{range .Containers}}{{.Name}}  {{.IPv4Address}}  {{.MacAddress}}{{println}}{{end}}"
-docker network inspect my-bridge-net
-```
-* **Status:** The `Containers` section now lists `mysql` (172.18.0.2/16), `redis` (172.18.0.3/16) and `flask` (172.18.0.4/16).
-
-![docker network inspect showing the three attached containers and their IPs](./screenshot/19-network-inspect-with-containers.png)
-
-#### Extra check: container-name DNS works on a user-defined network, not on the default bridge
-This check uses its own throwaway containers (`dnstest-a`, `dnstest-b`) and a temporary network (`dnstest-net`), so that both sides of the comparison are fair: in each case the name being looked up belongs to a running container **on the same network** as the container doing the lookup. It was captured after the main lab had been cleaned up (screenshot 21), which is why `dnstest-net` received the subnet `172.18.0.0/16` that `my-bridge-net` had used before. All test resources are removed by the last command.
-
-```powershell
-docker run -d --name dnstest-a flask-api sleep 300
-docker run --rm flask-api getent hosts dnstest-a; "exit code on default bridge: $LASTEXITCODE"
-docker exec dnstest-a cat /etc/resolv.conf
-docker network create dnstest-net
-docker run -d --name dnstest-b --net dnstest-net flask-api sleep 300
-docker run --rm --net dnstest-net flask-api getent hosts dnstest-b; "exit code on dnstest-net: $LASTEXITCODE"
-docker exec dnstest-b cat /etc/resolv.conf
-docker rm -f dnstest-a dnstest-b; docker network rm dnstest-net
-```
-* **Status:** On the default `bridge` network, a second container cannot resolve the running container `dnstest-a` by name (`getent` prints nothing and exits with code 2, which means the name was not found), and `dnstest-a`'s `/etc/resolv.conf` points straight to Docker Desktop's upstream resolver `192.168.65.7`, marked `(legacy)`. On the user-defined network `dnstest-net`, the same lookup of `dnstest-b` succeeds (`172.18.0.2`, exit code 0), and `/etc/resolv.conf` points to the embedded DNS server `127.0.0.11` (`internal resolver`), which forwards other names to `192.168.65.7`. This is why the exercise creates its own network instead of using the default one.
-
-![Container-name lookup fails on the default bridge and succeeds on a user-defined bridge; resolv.conf shows 192.168.65.7 vs 127.0.0.11](./screenshot/20-default-bridge-vs-user-bridge-dns.png)
-
 ### Task 6: Clean up
 ```powershell
 docker stop mysql redis flask && docker rm mysql redis flask
@@ -257,14 +211,13 @@ docker network ls --filter name=my-bridge-net
 ## Issues & Fixes
 | # | Problem (as observed) | Cause | Fix |
 |---|------------------------|-------|-----|
-| 1 | `flask` exited with `ImportError: cannot import name 'url_quote' from 'werkzeug.urls'` (screenshot 08). | `Flask==2.0.1` only requires `Werkzeug>=2.0`, so pip installed Werkzeug 3.1.9. Werkzeug 3.0 removed `werkzeug.urls.url_quote`, which Flask 2.0.1 imports. | Pinned `Werkzeug==2.0.3` in `requirements.txt`, the last 2.0.x release that matches Flask 2.0.1 (screenshot 09). |
+| 1 | `flask` exited with `ImportError: cannot import name 'url_quote' from 'werkzeug.urls'` (screenshot 08). | `Flask==2.0.1` only requires `Werkzeug>=2.0`, so pip installed Werkzeug 3.1.9. Werkzeug 3.0 removed `werkzeug.urls.url_quote`, which Flask 2.0.1 imports. | Pinned `Werkzeug==2.0.3` in `requirements.txt`, the last 2.0.x release that matches Flask 2.0.1. The rebuild in screenshot 12 installs Werkzeug 2.0.3 and Flask starts. |
 | 2 | `mysql` exited immediately: "Database is uninitialized and password option is not specified" (screenshot 08). | The official MySQL image will not initialise a database unless the root password policy is given as an environment variable. The exercise's `docker run` has none. | Re-ran with `-e MYSQL_RANDOM_ROOT_PASSWORD=yes`. MySQL generates a random root password at first start, so no credential had to be chosen, typed or stored (screenshot 10). |
 | 3 | `curl.exe http://localhost:5001/about` returned `(52) Empty reply from server` although the container was running (screenshot 11). | `app.run(debug=True, port=5001)` listens on `127.0.0.1` only. Published-port traffic enters the container on its network interface, not on loopback. | Changed to `app.run(host='0.0.0.0', debug=True, port=5001)` and rebuilt (screenshots 12 and 13). |
 | 4 | `ping: executable file not found in $PATH` inside `flask` (screenshot 15). | `python:3.9-slim` is a minimal image without `iputils-ping`. | Installed it in the running container with `docker exec -u root flask sh -c "apt-get update && apt-get install -y iputils-ping"` (screenshot 16). It was deliberately not added to the Dockerfile, because the API does not need ping. |
 | 5 | `docker exec -it flask bash` opens an interactive shell, which cannot be captured as a scripted screenshot. | Interactive TTY session. | Ran the same commands one by one with `docker exec flask <command>`, which executes them in the same container. |
 | 6 | `docker stop mysql redis flask && docker rm mysql redis flask` fails with "The token '&&' is not a valid statement separator in this version" (screenshot 21). | Windows PowerShell 5.1 has no `&&` operator (it was added in PowerShell 7). | Used `docker stop mysql redis flask; if ($?) { docker rm mysql redis flask }`, which has the same "only remove if stop succeeded" meaning. |
-| 7 | `docker build` and `docker pull` progress output shows up as error records in Windows PowerShell 5.1. | BuildKit and pull progress are written to stderr, and PowerShell 5.1 wraps native stderr lines as errors. | For the screenshots these commands (screenshots 05, 06, 09, 12) and the `docker exec ... apt-get` install (screenshot 16) were run through `cmd /c "... 2>&1"`, which merges the streams before PowerShell sees them. The Docker command itself is unchanged. |
-| 8 | The output of the very first `docker build` was not captured. | The screenshot helper crashed while printing pip's Unicode progress bar to a cp1252 console (`UnicodeEncodeError`). The build itself had succeeded. | Set `PYTHONIOENCODING=utf-8` for the helper and rebuilt with `--no-cache` so that screenshots 05 and 09 show the real pip dependency resolution instead of `CACHED` steps. |
+| 7 | `docker build` and `docker pull` progress output shows up as error records in Windows PowerShell 5.1. | BuildKit and pull progress are written to stderr, and PowerShell 5.1 wraps native stderr lines as errors. | The builds, the pulls and the `docker exec ... apt-get` install were run through `cmd /c "... 2>&1"` (see screenshots 12 and 16), which merges the streams before PowerShell sees them. The Docker command itself is unchanged. |
 
 **Security note:** the app still runs Flask's development server with `debug=True`, now on all interfaces. That is acceptable for this short local lab (the containers were removed at the end), but it should never be done on a shared or production host, because the Werkzeug debugger allows code execution if its PIN is known. For a real deployment use a WSGI server such as gunicorn, turn debug off, or publish the port only on loopback with `-p 127.0.0.1:5001:5001`.
 
@@ -274,14 +227,12 @@ docker network ls --filter name=my-bridge-net
 | Check | Result |
 |-------|--------|
 | `my-bridge-net` created, driver `bridge`, subnet `172.18.0.0/16` | Pass (screenshots 01-03) |
-| `flask-api` image builds and starts | Pass after pinning Werkzeug (screenshots 09, 12) |
+| `flask-api` image builds and starts | Pass after pinning Werkzeug (screenshot 12) |
 | `mysql`, `redis`, `flask` all `Up` on `my-bridge-net` | Pass (screenshot 13) |
-| `GET /about` from the Windows host (curl and browser) | Pass, JSON returned (screenshots 13, 14) |
+| `GET /about` from the Windows host (`curl.exe`) | Pass, JSON returned (screenshot 13) |
 | `flask` → `mysql` ping by name | Pass, 172.18.0.2, 0% loss (screenshot 17) |
 | `flask` → `redis` ping by name and TCP PING/PONG | Pass, 172.18.0.3, 0% loss, `+PONG` (screenshots 17, 18) |
 | Name resolution through Docker DNS `127.0.0.11` | Pass (screenshot 18) |
-| Container-name DNS on default bridge vs user-defined bridge (throwaway test containers) | Fails on the default bridge (no `127.0.0.11`), resolves on a user-defined bridge, as expected (screenshot 20) |
-| Network inspect lists the three containers | Pass (screenshot 19) |
 | Cleanup: containers and network removed | Pass (screenshot 21) |
 
 ---
@@ -292,7 +243,7 @@ docker network ls --filter name=my-bridge-net
 `--net` (the older spelling of `--network`) chooses which network the new container is attached to when it is created. Without it, a container joins Docker's default `bridge` network. With `--net=my-bridge-net` the container gets an interface and an IP address from that network's subnet (here `172.18.0.0/16`) and is registered in that network's embedded DNS under its container name, so other containers on the same network can find it. The flag also accepts the special values `host` (share the host's network stack), `none` (only a loopback interface) and `container:<name>` (share another container's network namespace). A running container can be attached to additional networks later with `docker network connect`.
 
 **2. How do containers communicate with each other on the same network?**
-Every container on a user-defined bridge network has its own IP address on a virtual Linux bridge, so the containers can reach each other directly on any port the target process listens on; no `-p` port publishing is needed between containers. They normally do not use the IP addresses, which change when a container is recreated, but the container names: each container's `/etc/resolv.conf` points to Docker's embedded DNS server at `127.0.0.11`, which resolves `mysql`, `redis` or `flask` to the container's current IP (screenshot 18). In this lab, the Flask app could connect to `mysql:3306` and `redis:6379` by name. This automatic name resolution exists only on user-defined networks; on the default `bridge` network containers can only use raw IPs or the legacy `--link` option. Screenshot 20 shows this with two throwaway containers: on the default bridge a running container's name cannot be resolved and `/etc/resolv.conf` has no `127.0.0.11`, while on a user-defined bridge the same lookup succeeds. Containers on different networks cannot talk to each other unless they share at least one network.
+Every container on a user-defined bridge network has its own IP address on a virtual Linux bridge, so the containers can reach each other directly on any port the target process listens on; no `-p` port publishing is needed between containers. They normally do not use the IP addresses, which change when a container is recreated, but the container names: each container's `/etc/resolv.conf` points to Docker's embedded DNS server at `127.0.0.11`, which resolves `mysql`, `redis` or `flask` to the container's current IP (screenshot 18). In this lab, `flask` pinged `mysql` and `redis` by name (screenshot 17) and opened a TCP connection to `redis:6379` by name (screenshot 18). This automatic name resolution exists only on user-defined networks; on the default `bridge` network containers can only use raw IPs or the legacy `--link` option. Containers on different networks cannot talk to each other unless they share at least one network.
 
 **3. What is the difference between a bridge network and a host network?**
 On a **bridge** network each container gets its own network namespace: its own interfaces, IP address, routing table and port space. Containers are connected through a virtual bridge, reach the outside world through NAT, and are not reachable from outside unless a port is published with `-p`. This gives isolation, and several containers can use the same internal port (for example two containers both listening on 5001) without conflict.
@@ -312,6 +263,5 @@ Publish it with `-p` (or `--publish`) when the container is created, using the f
 
 ## Cleanup / State Left Running
 * Containers `mysql`, `redis` and `flask` were stopped and removed, and network `my-bridge-net` was removed (screenshot 21).
-* The throwaway DNS test resources from screenshot 20 (`dnstest-a`, `dnstest-b`, `dnstest-net`) were removed by the last command of that screenshot.
 * Nothing is left running: no containers, port 5001 is free and no background processes were started.
 * The images `flask-api:latest`, `mysql:latest` and `redis:latest` were kept so the lab can be re-run quickly. To remove them: `docker rmi flask-api mysql:latest redis:latest`.
