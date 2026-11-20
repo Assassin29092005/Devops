@@ -1,0 +1,30 @@
+﻿Started by user admin
+Running as SYSTEM
+Building in workspace /var/jenkins_home/workspace/Storefront-Check
+The recommended git tool is: NONE
+No credentials specified
+Cloning the remote Git repository
+Cloning repository https://github.com/Assassin29092005/storefront-check.git
+ > git init /var/jenkins_home/workspace/Storefront-Check # timeout=10
+Fetching upstream changes from https://github.com/Assassin29092005/storefront-check.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/Assassin29092005/storefront-check.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git config remote.origin.url https://github.com/Assassin29092005/storefront-check.git # timeout=10
+ > git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origin/* # timeout=10
+Avoid second fetch
+ > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
+Checking out Revision 1118cde04d0d418a644aee99ebfb28abbda4d3cb (refs/remotes/origin/main)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 1118cde04d0d418a644aee99ebfb28abbda4d3cb # timeout=10
+Commit message: "Add hello-world.sh with storefront check script"
+First time build. Skipping changelog.
+[Storefront-Check] $ /bin/sh -xe /tmp/jenkins1564676962759264976.sh
++ chmod +x hello-world.sh
++ ./hello-world.sh
+=== Storefront Check ===
+Build Successful! Storefront services are up and running.
+Status: ALL CHECKS PASSED
+Timestamp: Fri Nov 20 03:07:15 UTC 2026
+Finished: SUCCESS
+

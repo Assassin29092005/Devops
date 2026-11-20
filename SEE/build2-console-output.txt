@@ -1,0 +1,29 @@
+﻿Started by user admin
+Running as SYSTEM
+Building in workspace /var/jenkins_home/workspace/Storefront-Check
+The recommended git tool is: NONE
+No credentials specified
+ > git rev-parse --resolve-git-dir /var/jenkins_home/workspace/Storefront-Check/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://github.com/Assassin29092005/storefront-check.git # timeout=10
+Fetching upstream changes from https://github.com/Assassin29092005/storefront-check.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/Assassin29092005/storefront-check.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
+Checking out Revision b4ed270bdb1acb2ce94b45815052acf94f39e522 (refs/remotes/origin/main)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f b4ed270bdb1acb2ce94b45815052acf94f39e522 # timeout=10
+Commit message: "Update hello-world.sh with version 2.0 and inventory check"
+ > git rev-list --no-walk 1118cde04d0d418a644aee99ebfb28abbda4d3cb # timeout=10
+[Storefront-Check] $ /bin/sh -xe /tmp/jenkins17832044591764358783.sh
++ chmod +x hello-world.sh
++ ./hello-world.sh
+=== Storefront Check ===
+Build Successful! Storefront services are up and running.
+Status: ALL CHECKS PASSED
+Version: 2.0 - Updated with inventory check
+Inventory Module: LOADED
+Timestamp: Fri Nov 20 03:10:07 UTC 2026
+Finished: SUCCESS
+
